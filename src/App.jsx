@@ -167,7 +167,7 @@ const App = () => {
   }
 
   return (
-    <div className={`min-h-screen ${THEMES[theme].bg} ${THEMES[theme].text} transition-colors flex flex-col font-sans select-none overflow-hidden`}>
+    <div className={`h-screen ${THEMES[theme].bg} ${THEMES[theme].text} transition-colors flex flex-col font-sans select-none overflow-hidden`}>
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 w-80 ${THEMES[theme].secondary} shadow-2xl transform transition-transform z-50 flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-4 border-b border-gray-500/10 flex justify-between items-center">
@@ -197,7 +197,7 @@ const App = () => {
       </div>
 
       {/* Nav */}
-      <nav className={`h-16 flex items-center justify-between px-6 border-b border-gray-500/10 ${THEMES[theme].secondary} z-40`}>
+      <nav className={`h-16 flex items-center justify-between px-6 border-b border-gray-500/10 ${THEMES[theme].secondary} z-40 shrink-0`}>
         <div className="flex items-center gap-4">
           <button onClick={() => { setPdfDoc(null); loadLib(); }} className="p-2 hover:bg-black/5 rounded-full"><Home size={20} /></button>
           {pdfDoc && <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-black/5 rounded-full"><List size={20} /></button>}
@@ -207,7 +207,7 @@ const App = () => {
           {pdfDoc && (
             <div className="hidden sm:flex items-center gap-1 mr-2">
               <button onClick={() => setScale(s => Math.max(0.5, s - 0.2))} className="p-1 px-2 hover:bg-black/5 rounded text-xs font-bold">-</button>
-              <span className="text-[10px] opacity-60 w-8 text-center">{Math.round(scale * 100)}%</span>
+              <span className="text-[10px] opacity-60 w-8 text-center font-mono">{Math.round(scale * 100)}%</span>
               <button onClick={() => setScale(s => Math.min(4, s + 0.2))} className="p-1 px-2 hover:bg-black/5 rounded text-xs font-bold">+</button>
             </div>
           )}
@@ -227,9 +227,9 @@ const App = () => {
         </div>
       </nav>
 
-      <main className="flex-1 overflow-auto bg-black/[0.02] p-4 relative flex justify-center">
+      <main className="flex-1 overflow-y-auto bg-black/[0.02] relative flex justify-center items-start scroll-smooth">
         {!pdfDoc ? (
-          <div className="w-full max-w-5xl mt-8">
+          <div className="w-full max-w-5xl mt-8 px-4">
             <h2 className="text-2xl font-bold mb-6 font-serif">Library</h2>
             {library.length === 0 ? <div className="text-center py-20 opacity-30">No books found. Import a PDF to begin.</div> : (
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-6">
@@ -247,26 +247,26 @@ const App = () => {
             )}
           </div>
         ) : (
-          <div className="relative group w-fit h-fit min-w-full flex justify-center py-4">
+          <div className="relative group w-fit h-fit flex justify-center py-8">
             {/* Fixed Navigation Arrows */}
             <button 
               onClick={() => setCurrentPage(p => Math.max(1, p-1))} 
-              className="fixed left-6 top-1/2 -translate-y-1/2 p-4 bg-white/80 dark:bg-black/50 backdrop-blur shadow-lg rounded-full z-30 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="fixed left-6 top-1/2 -translate-y-1/2 p-4 bg-white/90 dark:bg-black/70 backdrop-blur shadow-xl rounded-full z-30 opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 active:scale-95"
             >
               <ChevronLeft/>
             </button>
             <button 
               onClick={() => setCurrentPage(p => Math.min(numPages, p+1))} 
-              className="fixed right-6 top-1/2 -translate-y-1/2 p-4 bg-white/80 dark:bg-black/50 backdrop-blur shadow-lg rounded-full z-30 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="fixed right-6 top-1/2 -translate-y-1/2 p-4 bg-white/90 dark:bg-black/70 backdrop-blur shadow-xl rounded-full z-30 opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 active:scale-95"
             >
               <ChevronRight/>
             </button>
             
             {/* Page Container */}
-            <div className={`shadow-2xl rounded relative mx-auto ${theme === 'sepia' ? 'sepia-[0.1]' : ''}`}>
+            <div className={`shadow-2xl rounded relative mx-auto transition-transform duration-200 ${theme === 'sepia' ? 'sepia-[0.1]' : ''}`}>
               <canvas 
                 ref={canvasRef} 
-                className={`block rounded ${theme === 'dark' ? 'invert-[0.9] hue-rotate-180 brightness-95' : ''}`} 
+                className={`block rounded shadow-inner ${theme === 'dark' ? 'invert-[0.9] hue-rotate-180 brightness-95' : ''}`} 
               />
             </div>
           </div>
@@ -274,18 +274,54 @@ const App = () => {
       </main>
 
       {pdfDoc && (
-        <footer className={`h-16 ${THEMES[theme].secondary} border-t border-gray-500/10 flex flex-col justify-center px-8 z-40`}>
+        <footer className={`h-16 ${THEMES[theme].secondary} border-t border-gray-500/10 flex flex-col justify-center px-8 z-40 shrink-0`}>
           <div className="flex justify-between text-[10px] font-bold opacity-40 mb-1">
             <span><Clock size={10} className="inline mr-1"/> {Math.round((numPages - currentPage) * 1.5)}m left</span>
-            <span>{currentPage} / {numPages}</span>
+            <span>{currentPage} / {numPages} ({Math.round((currentPage/numPages)*100)}%)</span>
           </div>
-          <div className="w-full bg-black/5 h-1.5 rounded-full relative overflow-hidden">
-            <div className="bg-blue-600 h-full" style={{ width: `${(currentPage/numPages)*100}%` }} />
-            <input type="range" min="1" max={numPages} value={currentPage} onChange={e => setCurrentPage(parseInt(e.target.value))} className="absolute inset-0 opacity-0 cursor-pointer w-full" />
+          <div className="w-full bg-black/5 h-1.5 rounded-full relative overflow-hidden group/footer">
+            <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${(currentPage/numPages)*100}%` }} />
+            <input 
+              type="range" 
+              min="1" 
+              max={numPages} 
+              value={currentPage} 
+              onChange={e => setCurrentPage(parseInt(e.target.value))} 
+              className="absolute inset-0 opacity-0 cursor-pointer w-full z-10" 
+            />
           </div>
         </footer>
       )}
       {isLoading && <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center font-bold text-white">Loading...</div>}
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap');
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+          background: rgba(0,0,0,0.02);
+        }
+        ::-webkit-scrollbar-thumb {
+          background: rgba(0,0,0,0.2);
+          border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: rgba(0,0,0,0.3);
+        }
+
+        /* Ensure main area is the scroller */
+        main {
+          scrollbar-gutter: stable;
+        }
+
+        /* Range input reset */
+        input[type=range] { -webkit-appearance: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; }
+      `}} />
     </div>
   );
 };
