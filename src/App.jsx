@@ -123,6 +123,23 @@ const App = () => {
     }
   }, [pdfDoc, currentPage, scale, theme, libReady]);
 
+  // Helper function to generate a thumbnail of the first page
+  const generateCoverImage = async (doc) => {
+    try {
+      const page = await doc.getPage(1);
+      const viewport = page.getViewport({ scale: 0.4 }); // Low scale for thumbnail
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      await page.render({ canvasContext: context, viewport }).promise;
+      return canvas.toDataURL('image/jpeg', 0.7); // Compressed JPEG
+    } catch (e) {
+      console.error("Could not generate cover", e);
+      return null;
+    }
+  };
+
   const renderPage = async (num) => {
     const page = await pdfDoc.getPage(num);
     const vp = page.getViewport({ scale });
@@ -140,17 +157,28 @@ const App = () => {
     setIsLoading(true);
     const reader = new FileReader();
     reader.onload = async (ev) => {
-      const buf = ev.target.result;
-      const id = `${file.name}_${Date.now()}`;
-      const meta = { id, name: file.name, lastPage: 1, lastOpened: Date.now() };
-      await saveBookToDB(meta, buf);
-      const loadingTask = pdfjsLibRef.current.getDocument({ data: buf });
-      const pdf = await loadingTask.promise;
-      setPdfDoc(pdf);
-      setNumPages(pdf.numPages);
-      setPdfFile(id);
-      setIsLoading(false);
-      loadLib();
+      try {
+        const buf = ev.target.result;
+        const id = `${file.name}_${Date.now()}`;
+        
+        const loadingTask = pdfjsLibRef.current.getDocument({ data: buf });
+        const pdf = await loadingTask.promise;
+        
+        // Generate cover image string
+        const cover = await generateCoverImage(pdf);
+        
+        const meta = { id, name: file.name, lastPage: 1, lastOpened: Date.now(), cover };
+        await saveBookToDB(meta, buf);
+        
+        setPdfDoc(pdf);
+        setNumPages(pdf.numPages);
+        setPdfFile(id);
+        setIsLoading(false);
+        loadLib();
+      } catch (err) {
+        console.error(err);
+        setIsLoading(false);
+      }
     };
     reader.readAsArrayBuffer(file);
   };
@@ -229,17 +257,36 @@ const App = () => {
 
       <main className="flex-1 overflow-y-auto bg-black/[0.02] relative flex justify-center items-start scroll-smooth kindle-scroller">
         {!pdfDoc ? (
-          <div className="w-full max-w-5xl mt-8 px-4 direction-ltr">
+          <div className="w-full max-w-5xl mt-8 px-4 direction-ltr pb-20">
             <h2 className="text-2xl font-bold mb-6 font-serif">Library</h2>
-            {library.length === 0 ? <div className="text-center py-20 opacity-30">No books found. Import a PDF to begin.</div> : (
+            {library.length === 0 ? <div className="text-center py-20 opacity-30 font-medium">No books found. Import a PDF to begin.</div> : (
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-6">
                 {library.map(book => (
-                  <div key={book.id} onClick={async () => { setIsLoading(true); const data = await getFile(book.id); const pdf = await pdfjsLibRef.current.getDocument({ data }).promise; setPdfDoc(pdf); setNumPages(pdf.numPages); setPdfFile(book.id); setCurrentPage(book.lastPage); setIsLoading(false); }} className={`cursor-pointer p-4 rounded-2xl border border-gray-500/10 shadow-sm hover:shadow-lg transition-all ${THEMES[theme].secondary}`}>
-                    <div className="aspect-[3/4] bg-blue-500/10 rounded-lg mb-3 flex items-center justify-center"><BookOpen size={32} className="opacity-20"/></div>
-                    <h3 className="text-xs font-bold line-clamp-2">{book.name}</h3>
-                    <div className="mt-4 flex justify-between items-center opacity-30 text-[10px] font-bold">
-                       <button onClick={(e) => deleteBook(e, book.id)} className="hover:text-red-500"><Trash2 size={12}/></button>
-                       <span>PAGE {book.lastPage}</span>
+                  <div 
+                    key={book.id} 
+                    onClick={async () => { 
+                      setIsLoading(true); 
+                      const data = await getFile(book.id); 
+                      const pdf = await pdfjsLibRef.current.getDocument({ data }).promise; 
+                      setPdfDoc(pdf); 
+                      setNumPages(pdf.numPages); 
+                      setPdfFile(book.id); 
+                      setCurrentPage(book.lastPage); 
+                      setIsLoading(false); 
+                    }} 
+                    className={`cursor-pointer p-3 rounded-2xl border border-gray-500/10 shadow-sm hover:shadow-xl transition-all ${THEMES[theme].secondary} group`}
+                  >
+                    <div className="aspect-[3/4] bg-blue-500/5 rounded-xl mb-3 flex items-center justify-center overflow-hidden border border-gray-500/5 shadow-inner">
+                      {book.cover ? (
+                        <img src={book.cover} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={book.name} />
+                      ) : (
+                        <BookOpen size={32} className="opacity-20"/>
+                      )}
+                    </div>
+                    <h3 className="text-[13px] font-bold line-clamp-2 h-9 px-1 leading-snug">{book.name}</h3>
+                    <div className="mt-4 flex justify-between items-center opacity-40 text-[10px] font-bold px-1">
+                       <button onClick={(e) => deleteBook(e, book.id)} className="hover:text-red-500 transition-colors"><Trash2 size={13}/></button>
+                       <span>PG {book.lastPage}</span>
                     </div>
                   </div>
                 ))}
