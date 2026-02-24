@@ -127,13 +127,13 @@ const App = () => {
   const generateCoverImage = async (doc) => {
     try {
       const page = await doc.getPage(1);
-      const viewport = page.getViewport({ scale: 0.4 }); // Low scale for thumbnail
+      const viewport = page.getViewport({ scale: 0.5 }); // Reasonable scale for thumbnail
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
       canvas.height = viewport.height;
       canvas.width = viewport.width;
       await page.render({ canvasContext: context, viewport }).promise;
-      return canvas.toDataURL('image/jpeg', 0.7); // Compressed JPEG
+      return canvas.toDataURL('image/jpeg', 0.8); // Compressed JPEG
     } catch (e) {
       console.error("Could not generate cover", e);
       return null;
@@ -141,6 +141,7 @@ const App = () => {
   };
 
   const renderPage = async (num) => {
+    if (!pdfDoc) return;
     const page = await pdfDoc.getPage(num);
     const vp = page.getViewport({ scale });
     const canvas = canvasRef.current;
@@ -194,6 +195,32 @@ const App = () => {
     }
   }
 
+  const openBook = async (book) => {
+    setIsLoading(true); 
+    try {
+      const data = await getFile(book.id); 
+      const pdf = await pdfjsLibRef.current.getDocument({ data }).promise; 
+      
+      // Healing: If book has no cover (uploaded before feature), generate it now
+      if (!book.cover) {
+        const cover = await generateCoverImage(pdf);
+        if (cover) {
+          await updateMeta({ ...book, cover, lastOpened: Date.now() });
+          loadLib(); // Background refresh
+        }
+      }
+
+      setPdfDoc(pdf); 
+      setNumPages(pdf.numPages); 
+      setPdfFile(book.id); 
+      setCurrentPage(book.lastPage); 
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false); 
+    }
+  };
+
   return (
     <div className={`h-screen ${THEMES[theme].bg} ${THEMES[theme].text} transition-colors flex flex-col font-sans select-none overflow-hidden`}>
       {/* Sidebar */}
@@ -203,8 +230,8 @@ const App = () => {
           <button onClick={() => setSidebarOpen(false)}><X size={20} /></button>
         </div>
         <div className="flex border-b border-gray-500/10">
-          <button onClick={() => setSidebarTab('bookmarks')} className={`flex-1 p-3 text-xs font-bold ${sidebarTab === 'bookmarks' ? 'border-b-2 border-blue-500' : 'opacity-40'}`}>BOOKMARKS</button>
-          <button onClick={() => setSidebarTab('notes')} className={`flex-1 p-3 text-xs font-bold ${sidebarTab === 'notes' ? 'border-b-2 border-blue-500' : 'opacity-40'}`}>NOTES</button>
+          <button onClick={() => setSidebarTab('bookmarks')} className={`flex-1 p-3 text-xs font-bold ${sidebarTab === 'bookmarks' ? 'border-b-2 border-blue-500 text-blue-500' : 'opacity-40'}`}>BOOKMARKS</button>
+          <button onClick={() => setSidebarTab('notes')} className={`flex-1 p-3 text-xs font-bold ${sidebarTab === 'notes' ? 'border-b-2 border-blue-500 text-blue-500' : 'opacity-40'}`}>NOTES</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {sidebarTab === 'bookmarks' && bookmarks.filter(b => b.file === pdfFile).map(b => (
@@ -247,7 +274,7 @@ const App = () => {
             ))}
           </div>
           {!pdfDoc ? (
-            <button onClick={() => fileInputRef.current.click()} className="px-4 py-2 bg-blue-600 text-white rounded-full text-xs font-bold"><FileUp size={14} className="inline mr-1"/> IMPORT</button>
+            <button onClick={() => fileInputRef.current.click()} className="px-4 py-2 bg-blue-600 text-white rounded-full text-xs font-bold transition-transform active:scale-95"><FileUp size={14} className="inline mr-1"/> IMPORT</button>
           ) : (
             <button onClick={() => { const exists = bookmarks.find(b => b.page === currentPage && b.file === pdfFile); if(exists) setBookmarks(bookmarks.filter(b => b.id !== exists.id)); else setBookmarks([...bookmarks, { id: Date.now(), page: currentPage, file: pdfFile }]); }} className={`p-2 ${bookmarks.some(b => b.page === currentPage && b.file === pdfFile) ? 'text-red-500' : 'opacity-30'}`}><Bookmark fill="currentColor" size={20} /></button>
           )}
@@ -258,35 +285,40 @@ const App = () => {
       <main className="flex-1 overflow-y-auto bg-black/[0.02] relative flex justify-center items-start scroll-smooth kindle-scroller">
         {!pdfDoc ? (
           <div className="w-full max-w-5xl mt-8 px-4 direction-ltr pb-20">
-            <h2 className="text-2xl font-bold mb-6 font-serif">Library</h2>
-            {library.length === 0 ? <div className="text-center py-20 opacity-30 font-medium">No books found. Import a PDF to begin.</div> : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-6">
+            <h2 className="text-3xl font-bold mb-8 font-serif tracking-tight">Library</h2>
+            {library.length === 0 ? <div className="text-center py-24 opacity-30 font-medium text-lg">Your bookshelf is empty.<br/><span className="text-sm">Import a PDF to see it here.</span></div> : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10">
                 {library.map(book => (
                   <div 
                     key={book.id} 
-                    onClick={async () => { 
-                      setIsLoading(true); 
-                      const data = await getFile(book.id); 
-                      const pdf = await pdfjsLibRef.current.getDocument({ data }).promise; 
-                      setPdfDoc(pdf); 
-                      setNumPages(pdf.numPages); 
-                      setPdfFile(book.id); 
-                      setCurrentPage(book.lastPage); 
-                      setIsLoading(false); 
-                    }} 
-                    className={`cursor-pointer p-3 rounded-2xl border border-gray-500/10 shadow-sm hover:shadow-xl transition-all ${THEMES[theme].secondary} group`}
+                    onClick={() => openBook(book)} 
+                    className={`cursor-pointer group flex flex-col transition-all active:scale-95`}
                   >
-                    <div className="aspect-[3/4] bg-blue-500/5 rounded-xl mb-3 flex items-center justify-center overflow-hidden border border-gray-500/5 shadow-inner">
+                    <div className="relative aspect-[3/4] rounded-lg mb-4 overflow-hidden border border-black/5 shadow-md hover:shadow-2xl transition-all duration-300">
                       {book.cover ? (
-                        <img src={book.cover} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={book.name} />
+                        <img src={book.cover} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={book.name} />
                       ) : (
-                        <BookOpen size={32} className="opacity-20"/>
+                        <div className={`w-full h-full flex items-center justify-center ${THEMES[theme].secondary}`}>
+                          <BookOpen size={40} className="opacity-10"/>
+                        </div>
                       )}
+                      {/* Kindle Spine Effect */}
+                      <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-r from-black/20 to-transparent opacity-50" />
                     </div>
-                    <h3 className="text-[13px] font-bold line-clamp-2 h-9 px-1 leading-snug">{book.name}</h3>
-                    <div className="mt-4 flex justify-between items-center opacity-40 text-[10px] font-bold px-1">
-                       <button onClick={(e) => deleteBook(e, book.id)} className="hover:text-red-500 transition-colors"><Trash2 size={13}/></button>
-                       <span>PG {book.lastPage}</span>
+                    
+                    <h3 className="text-[13px] font-bold line-clamp-2 h-9 px-0.5 leading-tight group-hover:text-blue-600 transition-colors">
+                      {book.name.replace('.pdf', '')}
+                    </h3>
+                    
+                    <div className="mt-3 flex justify-between items-center opacity-40 text-[10px] font-bold uppercase tracking-wider">
+                       <button 
+                        onClick={(e) => deleteBook(e, book.id)} 
+                        className="p-1 hover:text-red-600 hover:bg-red-50 rounded transition-all"
+                        title="Delete from library"
+                       >
+                         <Trash2 size={13}/>
+                       </button>
+                       <span className="bg-black/5 px-1.5 py-0.5 rounded">Page {book.lastPage}</span>
                     </div>
                   </div>
                 ))}
@@ -322,11 +354,11 @@ const App = () => {
 
       {pdfDoc && (
         <footer className={`h-16 ${THEMES[theme].secondary} border-t border-gray-500/10 flex flex-col justify-center px-8 z-40 shrink-0`}>
-          <div className="flex justify-between text-[10px] font-bold opacity-40 mb-1">
-            <span><Clock size={10} className="inline mr-1"/> {Math.round((numPages - currentPage) * 1.5)}m left</span>
+          <div className="flex justify-between text-[10px] font-bold opacity-40 mb-1 uppercase tracking-widest">
+            <span><Clock size={10} className="inline mr-1 -mt-0.5"/> {Math.round((numPages - currentPage) * 1.5)} min left</span>
             <span>{currentPage} / {numPages} ({Math.round((currentPage/numPages)*100)}%)</span>
           </div>
-          <div className="w-full bg-black/5 h-1.5 rounded-full relative overflow-hidden group/footer">
+          <div className="w-full bg-black/5 h-1 rounded-full relative overflow-hidden group/footer">
             <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${(currentPage/numPages)*100}%` }} />
             <input 
               type="range" 
@@ -339,7 +371,14 @@ const App = () => {
           </div>
         </footer>
       )}
-      {isLoading && <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center font-bold text-white">Loading...</div>}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center">
+          <div className="bg-white dark:bg-zinc-800 p-6 rounded-2xl shadow-2xl flex flex-col items-center">
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+            <p className="font-bold text-sm tracking-wide">Processing Document...</p>
+          </div>
+        </div>
+      )}
 
       <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap');
