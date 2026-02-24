@@ -205,10 +205,10 @@ const App = () => {
         </div>
         <div className="flex items-center gap-2">
           {pdfDoc && (
-            <div className="hidden sm:flex items-center gap-1 mr-2">
-              <button onClick={() => setScale(s => Math.max(0.5, s - 0.2))} className="p-1 px-2 hover:bg-black/5 rounded text-xs font-bold">-</button>
-              <span className="text-[10px] opacity-60 w-8 text-center font-mono">{Math.round(scale * 100)}%</span>
-              <button onClick={() => setScale(s => Math.min(4, s + 0.2))} className="p-1 px-2 hover:bg-black/5 rounded text-xs font-bold">+</button>
+            <div className="flex items-center gap-1 mr-2 bg-black/5 p-1 rounded-xl">
+              <button onClick={() => setScale(s => Math.max(0.5, s - 0.2))} className="p-1 px-3 hover:bg-white hover:shadow-sm rounded-lg text-xs font-bold transition-all">-</button>
+              <span className="text-[10px] opacity-60 w-12 text-center font-mono font-bold">{Math.round(scale * 100)}%</span>
+              <button onClick={() => setScale(s => Math.min(4, s + 0.2))} className="p-1 px-3 hover:bg-white hover:shadow-sm rounded-lg text-xs font-bold transition-all">+</button>
             </div>
           )}
           <div className="flex bg-black/5 p-1 rounded-xl">
@@ -227,9 +227,9 @@ const App = () => {
         </div>
       </nav>
 
-      <main className="flex-1 overflow-y-auto bg-black/[0.02] relative flex justify-center items-start scroll-smooth">
+      <main className="flex-1 overflow-y-auto bg-black/[0.02] relative flex justify-center items-start scroll-smooth kindle-scroller">
         {!pdfDoc ? (
-          <div className="w-full max-w-5xl mt-8 px-4">
+          <div className="w-full max-w-5xl mt-8 px-4 direction-ltr">
             <h2 className="text-2xl font-bold mb-6 font-serif">Library</h2>
             {library.length === 0 ? <div className="text-center py-20 opacity-30">No books found. Import a PDF to begin.</div> : (
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-6">
@@ -247,11 +247,11 @@ const App = () => {
             )}
           </div>
         ) : (
-          <div className="relative group w-fit h-fit flex justify-center py-8">
+          <div className="relative group w-fit h-fit flex justify-center py-8 direction-ltr">
             {/* Fixed Navigation Arrows */}
             <button 
               onClick={() => setCurrentPage(p => Math.max(1, p-1))} 
-              className="fixed left-6 top-1/2 -translate-y-1/2 p-4 bg-white/90 dark:bg-black/70 backdrop-blur shadow-xl rounded-full z-30 opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 active:scale-95"
+              className="fixed left-12 top-1/2 -translate-y-1/2 p-4 bg-white/90 dark:bg-black/70 backdrop-blur shadow-xl rounded-full z-30 opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 active:scale-95"
             >
               <ChevronLeft/>
             </button>
@@ -297,20 +297,32 @@ const App = () => {
       <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap');
         
-        /* Custom Scrollbar */
+        /* Force Left-Side Scrollbar logic */
+        .kindle-scroller {
+          direction: rtl; /* Moves vertical scrollbar to the left */
+        }
+        .direction-ltr {
+          direction: ltr; /* Keeps content correctly oriented */
+        }
+
+        /* Custom Scrollbar Styling */
         ::-webkit-scrollbar {
-          width: 8px;
+          width: 12px;
           height: 8px;
         }
         ::-webkit-scrollbar-track {
-          background: rgba(0,0,0,0.02);
+          background: rgba(0,0,0,0.03);
+          border-right: 1px solid rgba(0,0,0,0.05);
         }
         ::-webkit-scrollbar-thumb {
-          background: rgba(0,0,0,0.2);
-          border-radius: 10px;
+          background: rgba(0,0,0,0.15);
+          border-radius: 20px;
+          border: 3px solid transparent;
+          background-clip: content-box;
         }
         ::-webkit-scrollbar-thumb:hover {
           background: rgba(0,0,0,0.3);
+          background-clip: content-box;
         }
 
         /* Ensure main area is the scroller */
