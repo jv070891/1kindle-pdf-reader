@@ -204,6 +204,13 @@ const App = () => {
           <div className="flex items-center gap-2"><BookOpen size={20} className="text-blue-500" /><h1 className="text-sm font-bold truncate max-w-[120px]">{pdfDoc ? library.find(b => b.id === pdfFile)?.name : 'My Library'}</h1></div>
         </div>
         <div className="flex items-center gap-2">
+          {pdfDoc && (
+            <div className="hidden sm:flex items-center gap-1 mr-2">
+              <button onClick={() => setScale(s => Math.max(0.5, s - 0.2))} className="p-1 px-2 hover:bg-black/5 rounded text-xs font-bold">-</button>
+              <span className="text-[10px] opacity-60 w-8 text-center">{Math.round(scale * 100)}%</span>
+              <button onClick={() => setScale(s => Math.min(4, s + 0.2))} className="p-1 px-2 hover:bg-black/5 rounded text-xs font-bold">+</button>
+            </div>
+          )}
           <div className="flex bg-black/5 p-1 rounded-xl">
             {['light', 'sepia', 'dark'].map(t => (
               <button key={t} onClick={() => setTheme(t)} className={`p-1.5 rounded-lg transition-all ${theme === t ? 'bg-white shadow-sm' : 'opacity-30'}`}>
@@ -220,7 +227,7 @@ const App = () => {
         </div>
       </nav>
 
-      <main className="flex-1 overflow-auto bg-black/[0.02] p-4 flex justify-center items-start">
+      <main className="flex-1 overflow-auto bg-black/[0.02] p-4 relative flex justify-center">
         {!pdfDoc ? (
           <div className="w-full max-w-5xl mt-8">
             <h2 className="text-2xl font-bold mb-6 font-serif">Library</h2>
@@ -240,10 +247,28 @@ const App = () => {
             )}
           </div>
         ) : (
-          <div className="relative group mt-4">
-            <button onClick={() => setCurrentPage(p => Math.max(1, p-1))} className="fixed left-4 top-1/2 p-4 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><ChevronLeft/></button>
-            <button onClick={() => setCurrentPage(p => Math.min(numPages, p+1))} className="fixed right-4 top-1/2 p-4 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><ChevronRight/></button>
-            <div className={`shadow-2xl rounded ${theme === 'sepia' ? 'sepia-[0.1]' : ''}`}><canvas ref={canvasRef} className={`max-w-full block ${theme === 'dark' ? 'invert-[0.9] hue-rotate-180 brightness-95' : ''}`} /></div>
+          <div className="relative group w-fit h-fit min-w-full flex justify-center py-4">
+            {/* Fixed Navigation Arrows */}
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p-1))} 
+              className="fixed left-6 top-1/2 -translate-y-1/2 p-4 bg-white/80 dark:bg-black/50 backdrop-blur shadow-lg rounded-full z-30 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <ChevronLeft/>
+            </button>
+            <button 
+              onClick={() => setCurrentPage(p => Math.min(numPages, p+1))} 
+              className="fixed right-6 top-1/2 -translate-y-1/2 p-4 bg-white/80 dark:bg-black/50 backdrop-blur shadow-lg rounded-full z-30 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <ChevronRight/>
+            </button>
+            
+            {/* Page Container */}
+            <div className={`shadow-2xl rounded relative mx-auto ${theme === 'sepia' ? 'sepia-[0.1]' : ''}`}>
+              <canvas 
+                ref={canvasRef} 
+                className={`block rounded ${theme === 'dark' ? 'invert-[0.9] hue-rotate-180 brightness-95' : ''}`} 
+              />
+            </div>
           </div>
         )}
       </main>
