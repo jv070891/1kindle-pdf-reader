@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+input[type=range] { -webkit-appearance: none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; }
