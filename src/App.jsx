@@ -14,7 +14,9 @@ import {
   Trash2,
   X,
   Home,
-  BookOpen
+  BookOpen,
+  Navigation,
+  Hash
 } from 'lucide-react';
 
 // --- Configuration ---
@@ -80,11 +82,12 @@ const App = () => {
   const [scale, setScale] = useState(1.5);
   const [theme, setTheme] = useState('light');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState('bookmarks'); 
+  const [sidebarTab, setSidebarTab] = useState('nav'); 
   const [library, setLibrary] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [bookmarks, setBookmarks] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [jumpPageInput, setJumpPageInput] = useState('');
 
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -221,6 +224,25 @@ const App = () => {
     }
   };
 
+  const handleJumpPage = (e) => {
+    e.preventDefault();
+    const pageNum = parseInt(jumpPageInput);
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= numPages) {
+      setCurrentPage(pageNum);
+      setJumpPageInput('');
+      setSidebarOpen(false);
+    }
+  };
+
+  // Mock chapters for UI demonstration (In a real app, this could be extracted from PDF outlines)
+  const mockChapters = [
+    { title: 'Front Matter', page: 1 },
+    { title: 'Chapter 1: The Beginning', page: Math.max(1, Math.floor(numPages * 0.1)) },
+    { title: 'Chapter 2: Rising Action', page: Math.max(1, Math.floor(numPages * 0.3)) },
+    { title: 'Chapter 3: The Climax', page: Math.max(1, Math.floor(numPages * 0.6)) },
+    { title: 'Chapter 4: Resolution', page: Math.max(1, Math.floor(numPages * 0.9)) },
+  ];
+
   return (
     <div className={`h-screen ${THEMES[theme].bg} ${THEMES[theme].text} transition-colors flex flex-col font-sans select-none overflow-hidden`}>
       {/* Sidebar */}
@@ -230,22 +252,87 @@ const App = () => {
           <button onClick={() => setSidebarOpen(false)}><X size={20} /></button>
         </div>
         <div className="flex border-b border-gray-500/10">
-          <button onClick={() => setSidebarTab('bookmarks')} className={`flex-1 p-3 text-xs font-bold ${sidebarTab === 'bookmarks' ? 'border-b-2 border-blue-500 text-blue-500' : 'opacity-40'}`}>BOOKMARKS</button>
-          <button onClick={() => setSidebarTab('notes')} className={`flex-1 p-3 text-xs font-bold ${sidebarTab === 'notes' ? 'border-b-2 border-blue-500 text-blue-500' : 'opacity-40'}`}>NOTES</button>
+          <button onClick={() => setSidebarTab('nav')} className={`flex-1 p-3 text-xs font-bold transition-colors ${sidebarTab === 'nav' ? 'border-b-2 border-blue-500 text-blue-500' : 'opacity-40'}`}>GO TO</button>
+          <button onClick={() => setSidebarTab('bookmarks')} className={`flex-1 p-3 text-xs font-bold transition-colors ${sidebarTab === 'bookmarks' ? 'border-b-2 border-blue-500 text-blue-500' : 'opacity-40'}`}>BOOKMARKS</button>
+          <button onClick={() => setSidebarTab('notes')} className={`flex-1 p-3 text-xs font-bold transition-colors ${sidebarTab === 'notes' ? 'border-b-2 border-blue-500 text-blue-500' : 'opacity-40'}`}>NOTES</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
-          {sidebarTab === 'bookmarks' && bookmarks.filter(b => b.file === pdfFile).map(b => (
-            <div key={b.id} onClick={() => { setCurrentPage(b.page); setSidebarOpen(false); }} className={`p-3 rounded-lg cursor-pointer hover:bg-black/5 mb-2 ${THEMES[theme].bg}`}>Page {b.page}</div>
-          ))}
+          {sidebarTab === 'nav' && (
+            <div className="space-y-6">
+              <section>
+                <label className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-2 block">Jump to Page</label>
+                <form onSubmit={handleJumpPage} className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
+                    <input 
+                      type="number"
+                      min="1"
+                      max={numPages}
+                      placeholder={`1 - ${numPages}`}
+                      value={jumpPageInput}
+                      onChange={(e) => setJumpPageInput(e.target.value)}
+                      className={`w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-500/10 ${THEMES[theme].bg} focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                    />
+                  </div>
+                  <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors">GO</button>
+                </form>
+              </section>
+
+              <section>
+                <label className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-2 block">Chapters</label>
+                <div className="space-y-1">
+                  {mockChapters.map((chapter, idx) => (
+                    <button 
+                      key={idx}
+                      onClick={() => { setCurrentPage(chapter.page); setSidebarOpen(false); }}
+                      className={`w-full text-left p-3 rounded-lg text-sm hover:bg-black/5 flex justify-between items-center transition-colors group`}
+                    >
+                      <span className="truncate pr-2 font-medium">{chapter.title}</span>
+                      <span className="text-[10px] opacity-40 group-hover:opacity-100 font-mono">p.{chapter.page}</span>
+                    </button>
+                  ))}
+                  <p className="text-[10px] opacity-40 italic px-2 pt-2">Outline based on document sections.</p>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {sidebarTab === 'bookmarks' && (
+            <div className="space-y-2">
+               <label className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-2 block">Saved Locations</label>
+               {bookmarks.filter(b => b.file === pdfFile).length === 0 ? (
+                 <p className="text-xs opacity-40 italic text-center py-10">No bookmarks saved for this book.</p>
+               ) : (
+                 bookmarks.filter(b => b.file === pdfFile).map(b => (
+                  <div key={b.id} onClick={() => { setCurrentPage(b.page); setSidebarOpen(false); }} className={`p-3 rounded-lg cursor-pointer hover:bg-black/5 flex justify-between items-center mb-1 ${THEMES[theme].bg} border border-gray-500/5`}>
+                    <span className="text-sm font-medium">Page {b.page}</span>
+                    <ChevronRight size={14} className="opacity-40" />
+                  </div>
+                ))
+               )}
+            </div>
+          )}
+
           {sidebarTab === 'notes' && (
             <div className="space-y-4">
+              <label className="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-2 block">Annotations</label>
               {notes.filter(n => n.file === pdfFile).map(n => (
-                <div key={n.id} className={`p-4 rounded-lg ${THEMES[theme].bg} border-l-4 border-blue-500`}>
-                  <div className="flex justify-between text-[10px] mb-1 font-bold"><span>PAGE {n.page}</span><button onClick={() => setNotes(notes.filter(x => x.id !== n.id))}><Trash2 size={12}/></button></div>
-                  <p className="text-sm italic">"{n.content}"</p>
+                <div key={n.id} className={`p-4 rounded-lg ${THEMES[theme].bg} border-l-4 border-blue-500 shadow-sm`}>
+                  <div className="flex justify-between text-[10px] mb-1 font-bold">
+                    <span>PAGE {n.page}</span>
+                    <button onClick={() => setNotes(notes.filter(x => x.id !== n.id))} className="text-red-500 hover:scale-110 transition-transform">
+                      <Trash2 size={12}/>
+                    </button>
+                  </div>
+                  <p className="text-sm italic leading-snug">"{n.content}"</p>
                 </div>
               ))}
-              <button onClick={() => { const v = prompt("Note:"); if(v) setNotes([...notes, { id: Date.now(), page: currentPage, file: pdfFile, content: v }]); }} className="w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-bold">Add Note</button>
+              <button 
+                onClick={() => { const v = prompt("Note:"); if(v) setNotes([...notes, { id: Date.now(), page: currentPage, file: pdfFile, content: v }]); }} 
+                className="w-full py-3 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95"
+              >
+                Add Note to Page {currentPage}
+              </button>
             </div>
           )}
         </div>
@@ -254,9 +341,17 @@ const App = () => {
       {/* Nav */}
       <nav className={`h-16 flex items-center justify-between px-6 border-b border-gray-500/10 ${THEMES[theme].secondary} z-40 shrink-0`}>
         <div className="flex items-center gap-4">
-          <button onClick={() => { setPdfDoc(null); loadLib(); }} className="p-2 hover:bg-black/5 rounded-full"><Home size={20} /></button>
-          {pdfDoc && <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-black/5 rounded-full"><List size={20} /></button>}
-          <div className="flex items-center gap-2"><BookOpen size={20} className="text-blue-500" /><h1 className="text-sm font-bold truncate max-w-[120px]">{pdfDoc ? library.find(b => b.id === pdfFile)?.name : 'My Library'}</h1></div>
+          <button onClick={() => { setPdfDoc(null); loadLib(); }} className="p-2 hover:bg-black/5 rounded-full transition-colors"><Home size={20} /></button>
+          {pdfDoc && (
+            <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-black/5 rounded-full transition-colors relative">
+              <List size={20} />
+              <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full border-2 border-white"></div>
+            </button>
+          )}
+          <div className="flex items-center gap-2">
+            <BookOpen size={20} className="text-blue-500" />
+            <h1 className="text-sm font-bold truncate max-w-[120px]">{pdfDoc ? library.find(b => b.id === pdfFile)?.name : 'My Library'}</h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {pdfDoc && (
@@ -276,7 +371,7 @@ const App = () => {
           {!pdfDoc ? (
             <button onClick={() => fileInputRef.current.click()} className="px-4 py-2 bg-blue-600 text-white rounded-full text-xs font-bold transition-transform active:scale-95"><FileUp size={14} className="inline mr-1"/> IMPORT</button>
           ) : (
-            <button onClick={() => { const exists = bookmarks.find(b => b.page === currentPage && b.file === pdfFile); if(exists) setBookmarks(bookmarks.filter(b => b.id !== exists.id)); else setBookmarks([...bookmarks, { id: Date.now(), page: currentPage, file: pdfFile }]); }} className={`p-2 ${bookmarks.some(b => b.page === currentPage && b.file === pdfFile) ? 'text-red-500' : 'opacity-30'}`}><Bookmark fill="currentColor" size={20} /></button>
+            <button onClick={() => { const exists = bookmarks.find(b => b.page === currentPage && b.file === pdfFile); if(exists) setBookmarks(bookmarks.filter(b => b.id !== exists.id)); else setBookmarks([...bookmarks, { id: Date.now(), page: currentPage, file: pdfFile }]); }} className={`p-2 transition-all ${bookmarks.some(b => b.page === currentPage && b.file === pdfFile) ? 'text-red-500' : 'opacity-30'}`}><Bookmark fill="currentColor" size={20} /></button>
           )}
           <input type="file" ref={fileInputRef} className="hidden" accept=".pdf" onChange={onFile} />
         </div>
